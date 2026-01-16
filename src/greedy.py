@@ -1,10 +1,17 @@
-def solve_greedy_delivery(instance, linear=True):
+
+def greedy_delivery(instance, linear=True, alpha=0.01, beta=0.01):
+    """
+    Glouton qui ne prend pas en compte la distance, on livre en priorité les objets lourds, 
+    puis on va ramasser les objets les plus rentables.
+
+    critique est une valeur de seuil pour la décision des objets à prendre
+    """
     nodes = list(instance.villes.keys())
-    start_node = nodes[0]
-    end_node = nodes[-1]
-
+    start_node = nodes[0] 
+    end_node = nodes[-1]  
+    
     decision = {i: [] for i in nodes}
-
+    
     customers = [n for n in nodes if n != start_node and n != end_node]
     tour = [start_node]
     current_load = instance.w0
@@ -13,27 +20,37 @@ def solve_greedy_delivery(instance, linear=True):
 
     while customers:
         best_delivery = 0
-        best_profit = 0
+        best_profit = float('inf')
         best_cand_delivery = None
         best_cand_profit = None
-        best_obj = None
-        next_node = None
-
+        next_node = None 
+        min_max =  float('inf')
         for cand in customers:
+            # nombre de livraison restante
+            nb_rest_cand = len(customers)
+
             # Check livraisons
             poids_deliv = sum(d['poids'] for d in instance.villes[cand]['deliveries'])
             if poids_deliv > 0:
                 if poids_deliv > best_delivery:
                     best_delivery = poids_deliv
                     best_cand_delivery = cand
-
+            
             # Check objets profitables
-            for i, obj in enumerate(instance.villes[cand]['pickups']):
-                ratio = obj['profit'] / obj['poids']
-                if ratio > best_profit and current_load + obj['poids'] <= instance.capacity:
-                    best_profit = ratio
-                    best_cand_profit = cand
-                    best_obj = i
+            min_max = 0
+
+            if instance.villes[cand]['pickups'] == []:
+                best_profit = 0
+                best_cand_profit = cand
+
+            for obj in instance.villes[cand]['pickups']:
+                ratio =  obj['poids']
+                if ratio > min_max:
+                    min_max = ratio
+
+            if best_profit != 0 and  min_max < best_profit:
+                best_profit = min_max
+                best_cand_profit = cand
 
         # Logique de décision
         if best_cand_delivery is not None:
@@ -55,12 +72,16 @@ def solve_greedy_delivery(instance, linear=True):
             # Tri par ratio décroissant
             pickups_with_idx.sort(key=lambda x: x[2], reverse=True)
 
-            # On prend tout ce qui rentre dans le camion
             for idx, obj, ratio in pickups_with_idx:
-                if current_load + obj['poids'] <= instance.capacity:
+                if linear:
+                    cout = (alpha * obj['poids'])
+                else:
+                    cout = (obj['poids'] * alpha +  beta *(obj['poids']**2 ))
+
+                if current_load + obj['poids'] <= instance.capacity and obj['profit'] > cout*nb_rest_cand :
                     decision[next_node][idx] = 1
                     current_load += obj['poids']
-
+                    
         else:
             # Si aucune ville n'est "attractive", on prend la première disponible pour ne pas bloquer l'algorithme
             next_node = customers[0]
@@ -74,3 +95,5 @@ def solve_greedy_delivery(instance, linear=True):
 
     tour.append(end_node)
     return tour, decision, all_w
+
+
