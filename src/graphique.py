@@ -9,12 +9,17 @@ from plne import solve_pdtsp_gurobi
 import matplotlib.pyplot as plt
 import sys
 
-BETA = 0.1
+BETA = 0.002
 LINEAR = True
 DISTANCE = True
+TAILLE = 20
 
-def compare_alpha_scores(scale):
-    filename = "instances/TS2004t2/n20mosA.tsp"
+def compare_alpha_scores(scale, taille, lettre):
+    if taille <= 80:
+        filename = "instances/TS2004t2/n"+str(taille)+"mos"+lettre+".tsp"
+    else:
+        filename = "instances/TS2004t3/n"+str(taille)+"mos"+lettre+".tsp"
+
     villes_multi, capacity, w0, demand, display = prepare_split_data(filename, nb_decoupes=2)
     instance = PDTSP_Instance(villes_multi, capacity, w0, display)
 
@@ -46,7 +51,7 @@ def compare_alpha_scores(scale):
 
         # 3. PLNE (Attention : peut être lent selon l'instance)
         try:
-            t_p, d_p = solve_pdtsp_gurobi(instance, alpha=a)
+            t_p, d_p = solve_pdtsp_gurobi(instance, alpha=a, beta=BETA, linear=LINEAR, distance=DISTANCE)
             _, score_p= instance.evaluate_solution(t_p, d_p, alpha=a, beta=BETA, linear=LINEAR, distance=DISTANCE)
             results['PLNE'].append(score_p)
         except:
@@ -56,28 +61,6 @@ def compare_alpha_scores(scale):
         t_i, d_i = hill_climbing(instance, [i+1 for i in range(21)], alpha=a, beta=BETA, linear=LINEAR, distance=DISTANCE)
         _, score_i = instance.evaluate_solution(t_i, d_i, alpha=a, beta=BETA, linear=LINEAR, distance=DISTANCE)
         results['Hill Climbing'].append(score_i)
-
-    # --- Affichage des 4 graphiques ---
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle(f"Évolution du score $Z$ en fonction de $\\alpha$ (Distance={DISTANCE})", fontsize=16)
-
-    algos = list(results.keys())
-    colors = ['blue', 'green', 'red', 'purple']
-
-    for i in range(4):
-        ax = axs[i//2, i%2]
-        algo_name = algos[i]
-        ax.plot(alphas, results[algo_name], marker='o', color=colors[i], linestyle='-')
-        ax.set_title(algo_name)
-        ax.set_xlabel(r"$\alpha$")
-        ax.set_ylabel("Score $Z$")
-        ax.grid(True)
-
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    # --- SAUVEGARDE ---
-    filename_plot = f"comparaison_alpha_dist_{DISTANCE}{scale}.png"
-    plt.savefig(filename_plot, dpi=300) # dpi=300 pour une qualité propre pour le rapport
-    print(f"Graphique sauvegardé sous : {filename_plot}")
 
     # --- Création du graphique combiné ---
     plt.figure(figsize=(10, 7))
@@ -100,11 +83,11 @@ def compare_alpha_scores(scale):
     plt.grid(True, linestyle='--', alpha=0.7)
 
     # Sauvegarde
-    filename = f"comparaison_globale_dist_{DISTANCE}{scale}.png"
+    filename = f"figures/comparaison_globale_dist_{DISTANCE}{scale}.png"
     plt.savefig(filename, dpi=300)
     print(f"Graphique combiné sauvegardé : {filename}")
 
-compare_alpha_scores(0.01)
-compare_alpha_scores(0.001)
-compare_alpha_scores(0.0001)
-compare_alpha_scores(0.00001)
+compare_alpha_scores(0.01, TAILLE, 'A')
+compare_alpha_scores(0.001, TAILLE, 'A')
+compare_alpha_scores(0.0001, TAILLE, 'A')
+compare_alpha_scores(0.00001,TAILLE, 'A')

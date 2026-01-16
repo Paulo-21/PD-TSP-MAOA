@@ -2,9 +2,8 @@
 def greedy_delivery(instance, linear=True, alpha=0.01, beta=0.01):
     """
     Glouton qui ne prend pas en compte la distance, on livre en priorité les objets lourds, 
-    puis on va ramasser les objets les plus rentables.
+    puis on va ramasser les objets les plus rentables et les moins lourds au début, les plus lourds vers la fin.
 
-    critique est une valeur de seuil pour la décision des objets à prendre
     """
     nodes = list(instance.villes.keys())
     start_node = nodes[0] 

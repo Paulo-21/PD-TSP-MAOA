@@ -26,7 +26,7 @@ class PDTSP_Instance:
                 dist[i][j] = int(d + 0.5) # Arrondi TSPLIB standard
         return dist
 
-    def evaluate_solution(self, tour, decisions, alpha=1.0, beta=0.3, linear=True, distance=False):
+    def evaluate_solution(self, tour, decisions, alpha=0.01, beta=0.01, linear=True, distance=False):
         """
         tour : [1, 5, 3, ..., 21]
         decisions : dict {id_ville: [1, 0, 1]} indiquant quels objets de 'pickups' sont pris.
@@ -37,7 +37,7 @@ class PDTSP_Instance:
         
         # Vérification charge initiale
         if current_weight > self.capacity:
-            return False, -float('inf'), "Surcharge initiale au dépôt"
+            return False, -float('inf'),
 
         for i in range(len(tour) - 1):
             u = tour[i]
@@ -71,9 +71,9 @@ class PDTSP_Instance:
             
             # Vérifications
             if current_weight > self.capacity:
-                return False, -float('inf'), f"Surcharge à la ville {v} ({current_weight}>{self.capacity})"
+                return False, -float('inf'), 
             if current_weight < 0:
-                return False, -float('inf'), f"Poids négatif à la ville {v} (Erreur flux)"
+                return False, -float('inf'),
 
         score_z = total_profit - total_transport_cost
         return True, score_z

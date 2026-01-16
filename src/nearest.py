@@ -1,21 +1,21 @@
-
 import numpy as np
 
 def nearest_neighbor(instance, alpha=1.0, beta=3.0, linear=True):
-    """
-    On utilise une méthode qui calcule le score pour chaque ville à partir de la ville courante
-    ainsi on va dans la ville qui a le meilleur score
-    """
     nodes = list(instance.villes.keys())
     start_node = nodes[0]
     end_node = nodes[-1]
     
+    # Pré-tri des pickups par ratio 
+    sorted_pickups_all = {}
+    for n in nodes:
+        sorted_pickups_all[n] = sorted(enumerate(instance.villes[n]['pickups']), 
+                                       key=lambda x: x[1]['profit']/x[1]['poids'], reverse=True)
+
     decision = {i: [] for i in nodes}
-    customers = [n for n in nodes if n != start_node and n != end_node]
+    customers = set(nodes[1:-1]) #Utilisation d'un set
     tour = [start_node]
     current_load = instance.w0
     all_w = [current_load]
-
     current_node = start_node
 
     while customers:
@@ -24,54 +24,48 @@ def nearest_neighbor(instance, alpha=1.0, beta=3.0, linear=True):
         best_pickups = []
         best_deliv_poids = 0
 
+        # Estimation simplifiée de la distance restante
+        # Au lieu de np.median, on utilise une estimation basée sur le nombre de clients
+        n_restant = len(customers)
+        # On peut pré-calculer la distance moyenne de la matrice pour gagner du temps
+        avg_dist_matrix = np.mean(list(instance.dist_matrix[current_node].values()))
+
         for cand in customers:
             dist = instance.dist_matrix[current_node][cand]
-            all_dist = []
-
-            # On prend le max des distance moyenne des distances vers les autres et le dépôt
-            for cand2 in customers:
-                others = [n for n in customers if n != cand2] + [end_node]
-                avg_dist_restante = sum(instance.dist_matrix[cand2][o] for o in others) 
-                all_dist.append(avg_dist_restante)
-
-            max_dist = np.median(all_dist)
-
+            
             # (Transport Cost)
             if linear:
                 transport_cost = dist * current_load * alpha
             else:
-                transport_cost = dist * ( current_load * alpha +  beta *(current_load**2 ) )
-   
-            # On calcule ce qu'on livre (allègement)
-            poids_deliv = sum(d['poids'] for d in instance.villes[cand]['deliveries'])
-            if linear:
-                gain_allegement = poids_deliv * alpha * max_dist
-            else:
-                gain_allegement = max_dist * (poids_deliv * alpha +  beta *(poids_deliv**2 ))
-           
+                transport_cost = dist * (current_load * alpha + beta * (current_load**2))
 
-            # Simulation sac à dos pour les pickups
+            # Allègement
+            poids_deliv = sum(d['poids'] for d in instance.villes[cand]['deliveries'])
+            
+            # C'est l'estimation de "combien de temps ce poids restera dans le camion"
+            dist_estimee_restante = avg_dist_matrix * (n_restant-1)
+
+            if linear:
+                gain_allegement = poids_deliv * alpha * dist_estimee_restante
+            else:
+                gain_allegement = dist_estimee_restante * (poids_deliv * alpha + beta * (poids_deliv**2))
+
+            # Simulation sac à dos
             temp_load = current_load - poids_deliv
             temp_profit = 0
             temp_pickups = [0] * len(instance.villes[cand]['pickups'])
             
-            # Tri par ratio profit/poids
-            pickups = sorted(enumerate(instance.villes[cand]['pickups']), 
-                            key=lambda x: x[1]['profit']/x[1]['poids'], reverse=True)
-            
-            for idx, obj in pickups:
-                # Coût futur estimé pour cet objet précis
+            for idx, obj in sorted_pickups_all[cand]:
                 if linear:
-                    cout_futur_objet = obj['poids'] * max_dist * alpha
+                    cout_futur_objet = obj['poids'] * dist_estimee_restante * alpha
                 else:    
-                    cout_futur_objet = max_dist * (obj['poids']*alpha + beta *(obj['poids']**2 ))
+                    cout_futur_objet = dist_estimee_restante * (obj['poids']*alpha + beta *(obj['poids']**2 ))
                 
                 if temp_load + obj['poids'] <= instance.capacity:
                     if obj['profit'] > cout_futur_objet:
                         temp_profit += obj['profit']
                         temp_load += obj['poids']
                         temp_pickups[idx] = 1
-
 
             score = temp_profit - transport_cost + gain_allegement
 
@@ -81,23 +75,19 @@ def nearest_neighbor(instance, alpha=1.0, beta=3.0, linear=True):
                 best_pickups = temp_pickups
                 best_deliv_poids = poids_deliv
 
-        # Exécution du mouvement
-        if best_cand is None: best_cand = customers[0] # Sécurité
+        # Exécution
+        if best_cand is None: best_cand = list(customers)[0]
 
-        # Calcul du poids final après opérations dans la ville
         poids_ramasse = sum(instance.villes[best_cand]['pickups'][i]['poids'] 
                             for i, v in enumerate(best_pickups) if v == 1)
         
         current_load = current_load - best_deliv_poids + poids_ramasse
         current_node = best_cand
-        
         decision[current_node] = best_pickups
         tour.append(current_node)
         customers.remove(current_node)
         all_w.append(current_load)
 
-    # Retour final au dépôt
     tour.append(end_node)
     all_w.append(current_load)
-    
     return tour, decision, all_w

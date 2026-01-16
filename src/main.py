@@ -10,15 +10,22 @@ import matplotlib.pyplot as plt
 import sys
 
 
-ALPHA = 0.01 
-BETA = 0.1
+ALPHA = 0.01
+BETA = 0.01
 LINEAR = True
 DISTANCE = True
-
+FILENAME = "instances/TS2004t2/n20mosA.tsp"
+#FILENAME = "instances/TS2004t2/n30mosA.tsp"
+#FILENAME = "instances/TS2004t2/n40mosA.tsp"
+#FILENAME = "instances/TS2004t2/n50mosA.tsp"
+#FILENAME = "instances/TS2004t2/n60mosA.tsp"
+#FILENAME = "instances/TS2004t3/n300mosA.tsp"
+#FILENAME = "instances/TS2004t3/n200mosA.tsp"
+#FILENAME = "instances/TS2004t3/n300mosA.tsp"
 
 def greedy():
     # Lecture du fichier
-    filename = "instances/TS2004t2/n20mosA.tsp"
+    filename = FILENAME
     villes_multi, capacity, w0, demand, display= prepare_split_data(filename, nb_decoupes=2)
     
     # Création de l'instance
@@ -28,10 +35,10 @@ def greedy():
 
     # Lancement Glouton
     print("Calcul heuristique gloutonne livraison au plus tôt et objet profitable")
-    tour, decision, all_w = greedy_delivery(instance,linear=LINEAR, alpha=ALPHA,  beta=BETA)
+    tour, decision, all_w = greedy_delivery(instance, linear=LINEAR, alpha=ALPHA,  beta=BETA)
     
     if tour:
-        print_pretty_results(instance, tour, decision, distance=DISTANCE,  alpha=ALPHA,  beta=BETA)
+        print_pretty_results(instance, tour, decision, distance=DISTANCE,  alpha=ALPHA,  beta=BETA, linear=LINEAR)
         
         # Visualisation
         try:
@@ -44,7 +51,7 @@ def greedy():
 
 def nearest():
     # Lecture du fichier
-    filename = "instances/TS2004t2/n20mosA.tsp"
+    filename = FILENAME
     villes_multi, capacity, w0, demand, display= prepare_split_data(filename, nb_decoupes=2)
     
     # Création de l'instance
@@ -57,7 +64,7 @@ def nearest():
     tour, decision, all_w = nearest_neighbor(instance, alpha=ALPHA,  beta=BETA)
     
     if tour:
-        print_pretty_results(instance, tour, decision, distance=DISTANCE, alpha=ALPHA,  beta=BETA)
+        print_pretty_results(instance, tour, decision, distance=DISTANCE, alpha=ALPHA,  beta=BETA, linear=LINEAR)
         
         # Visualisation
         try:
@@ -69,7 +76,7 @@ def nearest():
 
 def plne():
     # Lecture du fichier
-    filename = "instances/TS2004t2/n20mosA.tsp"
+    filename = FILENAME
     villes_multi, capacity, w0, demand, display= prepare_split_data(filename, nb_decoupes=2)
     
     # Création de l'instance
@@ -79,10 +86,10 @@ def plne():
 
     # Lancement Glouton
     print("Calcul par PLNE")
-    tour, decision = solve_pdtsp_gurobi(instance, alpha=ALPHA)
+    tour, decision = solve_pdtsp_gurobi(instance, distance=DISTANCE,  alpha=ALPHA,  beta=BETA, linear=LINEAR)
     
     if tour:
-        print_pretty_results(instance, tour, decision, distance=DISTANCE, alpha=ALPHA,  beta=BETA)
+        print_pretty_results(instance, tour, decision, distance=DISTANCE, alpha=ALPHA,  beta=BETA, linear=LINEAR)
         
         # Visualisation
         try:
@@ -94,7 +101,7 @@ def plne():
 
 def iterative():
         # Lecture du fichier
-    filename = "instances/TS2004t2/n20mosA.tsp"
+    filename = FILENAME
     villes_multi, capacity, w0, demand, display= prepare_split_data(filename, nb_decoupes=2)
     
     # Création de l'instance
@@ -104,10 +111,10 @@ def iterative():
 
     # Lancement Glouton
     print("Calcul par Iterative Méthode")
-    tour, decision = hill_climbing(instance, [i+1 for i in range(21)], alpha=ALPHA,  beta=BETA, linear=LINEAR, distance=DISTANCE)
+    tour, decision = hill_climbing(instance, [i+1 for i in range(301)], alpha=ALPHA,  beta=BETA, linear=LINEAR, distance=DISTANCE)
     
     if tour:
-        print_pretty_results(instance, tour, decision, distance=DISTANCE, alpha=ALPHA,  beta=BETA)
+        print_pretty_results(instance, tour, decision, distance=DISTANCE, alpha=ALPHA,  beta=BETA, linear=LINEAR)
         
         # Visualisation
         try:

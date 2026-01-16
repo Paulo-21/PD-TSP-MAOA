@@ -2,36 +2,27 @@ import matplotlib.pyplot as plt
 import math
 
 
+import os
+
 def read_inst(name):
-    """
-    Lit une instance PD-TSP au format TSPLIB.
-
-    Retourne :
-    - coords   : dict {ville: (x, y)}
-    - display  : dict {ville: (x, y)}   # pour affichage
-    - capacity : int
-    - demand   : dict {ville: demande}
-    """
-
     coords = {}
     display = {}
     demand = {}
     capacity = None
-
     section = None
+
+    # On récupère le nom du fichier sans le chemin pour le test
+    filename = os.path.basename(name)
 
     with open(name, "r") as f:
         for line in f:
             line = line.strip()
-            if not line:
-                continue
+            if not line: continue
 
-            # En-tête
             if line.startswith("CAPACITY"):
                 capacity = int(line.split(":")[1])
                 continue
 
-            # Sections
             if line == "NODE_COORD_SECTION":
                 section = "coords"
                 continue
@@ -44,22 +35,45 @@ def read_inst(name):
             elif line == "EOF":
                 break
 
-            # Lecture des sections
+            parts = line.split()
             if section == "coords":
-                i, x, y = line.split()
-                coords[int(i)] = (float(x), float(y))
-
+                coords[int(parts[0])] = (float(parts[1]), float(parts[2]))
             elif section == "display":
-                i, x, y = line.split()
-                display[int(i)] = (float(x), float(y))
-
+                display[int(parts[0])] = (float(parts[1]), float(parts[2]))
             elif section == "demand":
-                i, d = line.split()
-                demand[int(i)] = int(d)
+                demand[int(parts[0])] = int(parts[1])
 
-    return coords, capacity, demand, display
+    #  LOGIQUE DE SÉLECTION 
 
-def print_pretty_results(instance, tour, decision, distance=False, alpha=0.01,  beta=0.01):
+    # Si le fichier contient "mos", c'est une instance de Class 1 (Mosheiov)
+    # Le dépôt est déjà dupliqué et les demandes sont prêtes.
+    if "mos" in filename.lower():
+        print(f"Mode Class 1 détecté ({filename}) : Lecture standard.")
+        # On ne touche à rien, on retourne les données telles quelles
+        return coords, capacity, demand, display
+
+    # Sinon  on applique une transformation
+    else:
+        print(f"Mode Class 2 détecté ({filename}) : Adaptation du dépôt.")
+        
+        # Somme des livraisons (poids négatifs hors dépôt)
+        total_livraisons = sum(abs(d) for i, d in demand.items() if i != 1 and d < 0)
+        
+        # Le dépôt de départ (1) fournit tout
+        demand[1] = total_livraisons
+        
+        #  On double le dépôt à la fin
+        depot_fin_id = max(coords.keys()) + 1
+        coords[depot_fin_id] = coords[1]
+        display[depot_fin_id] = display[1]
+        
+        # Le dépôt de fin récupère tous les ramassages (poids positifs)
+        total_ramassages = sum(d for i, d in demand.items() if i != depot_fin_id and d > 0)
+        demand[depot_fin_id] = -total_ramassages
+
+        return coords, capacity, demand, display
+
+def print_pretty_results(instance, tour, decision, distance=False, alpha=0.01,  beta=0.01, linear=True):
     print("\n" + "="*50)
     print(f"{'ÉTAPE':<6} | {'VILLE':<6} | {'ACTION':<20} | {'POIDS SORTANT'}")
     print("-" * 50)
@@ -85,7 +99,7 @@ def print_pretty_results(instance, tour, decision, distance=False, alpha=0.01,  
         
         print(f"{step_str:<6} | {node:<6} | {action_str:<20} | {int(curr_w)}kg")
     
-    valid, score = instance.evaluate_solution(tour, decision, distance=distance, alpha=alpha,  beta=beta)
+    valid, score = instance.evaluate_solution(tour, decision, distance=distance, alpha=alpha,  beta=beta, linear=linear)
 
     print(f"Résultat -> Valide: {valid}, Score: {score:.2f}")
         
